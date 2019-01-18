@@ -216,6 +216,7 @@ public:
     Itanium,
     Cygnus,
     CoreCLR,
+    SYCLDevice,
     Simulator, // Simulator variants of other systems, e.g., Apple's iOS
     MacABI, // Mac Catalyst variant of Apple's iOS deployment target.
     LastEnvironmentType = MacABI
@@ -482,6 +483,10 @@ public:
   /// isOSDarwin - Is this a "Darwin" OS (macOS, iOS, tvOS or watchOS).
   bool isOSDarwin() const {
     return isMacOSX() || isiOS() || isWatchOS();
+  }
+
+  bool isSYCLDeviceEnvironment() const {
+    return getEnvironment() == Triple::SYCLDevice;
   }
 
   bool isSimulatorEnvironment() const {
