@@ -380,6 +380,11 @@ compiler:
 
 ## Supported extensions
 
-Intel subgroups (link: TBD).
+- [Intel subgroups](extensions/sub_group_ndrange/sub_group_ndrange.md)
+
+## Unsupported extensions/proposals
+
+- [Ordered queue](extensions/ordered_queue/ordered_queue.adoc)
+- [Unified shared memory](extensions/usm/usm.adoc)
 
 \*Other names and brands may be claimed as the property of others.
