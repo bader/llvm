@@ -244,7 +244,7 @@ void Sema::Initialize() {
     if (IdResolver.begin(Class) == IdResolver.end())
       PushOnScopeChains(Context.getObjCClassDecl(), TUScope);
 
-    // Create the built-in forward declaratino for 'Protocol'.
+    // Create the built-in forward declaration for 'Protocol'.
     DeclarationName Protocol = &Context.Idents.get("Protocol");
     if (IdResolver.begin(Protocol) == IdResolver.end())
       PushOnScopeChains(Context.getObjCProtocolDecl(), TUScope);
@@ -267,6 +267,9 @@ void Sema::Initialize() {
 
   // Initialize predefined OpenCL types and supported extensions and (optional)
   // core features.
+  if (getLangOpts().SYCLIsDevice) {
+    addImplicitTypedef("__ocl_sampler_t", Context.OCLSamplerTy);
+  }
   if (getLangOpts().OpenCL) {
     getOpenCLOptions().addSupport(
         Context.getTargetInfo().getSupportedOpenCLOpts());
