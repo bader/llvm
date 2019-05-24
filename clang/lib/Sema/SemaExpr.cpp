@@ -12404,7 +12404,7 @@ ExprResult Sema::CreateBuiltinBinOp(SourceLocation OpLoc,
   if (!LHS.isUsable() || !RHS.isUsable())
     return ExprError();
 
-  if (getLangOpts().OpenCL || getLangOpts().SYCLIsDevice) {
+  if (getLangOpts().OpenCL) {
     QualType LHSTy = LHSExpr->getType();
     QualType RHSTy = RHSExpr->getType();
     // OpenCLC v2.0 s6.13.11.1 allows atomic variables to be initialized by
@@ -13019,7 +13019,7 @@ ExprResult Sema::CreateBuiltinUnaryOp(SourceLocation OpLoc,
   bool CanOverflow = false;
 
   bool ConvertHalfVec = false;
-  if (getLangOpts().OpenCL) {
+  if (getLangOpts().OpenCL || getLangOpts().SYCLIsDevice) {
     QualType Ty = InputExpr->getType();
     // The only legal unary operation for atomics is '&'.
     if ((Opc != UO_AddrOf && Ty->isAtomicType()) ||
