@@ -2,11 +2,11 @@
 
 ## Introduction
 
-This test describes the architecture of the SYCL compiler and runtime
+This document describes the architecture of the SYCL compiler and runtime
 library.  Base SYCL specification version is
 [1.2.1](https://www.khronos.org/registry/SYCL/specs/sycl-1.2.1.pdf).
 
-## SYCL Compiler architecture test
+## SYCL Compiler architecture
 
 SYCL application compilation flow:
 
