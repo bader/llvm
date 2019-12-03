@@ -3798,10 +3798,8 @@ LangAS CodeGenModule::GetGlobalVarAddressSpace(const VarDecl *D) {
   }
 
   if (LangOpts.SYCLIsDevice) {
-    if (!getenv("DISABLE_INFER_AS")) {
-      if (!D || D->getType().getAddressSpace() == LangAS::Default) {
-        return LangAS::opencl_global;
-      }
+    if (!D || D->getType().getAddressSpace() == LangAS::Default) {
+      return LangAS::opencl_global;
     }
   }
 
@@ -3830,7 +3828,7 @@ LangAS CodeGenModule::getStringLiteralAddressSpace() const {
   // OpenCL v1.2 s6.5.3: a string literal is in the constant address space.
   if (LangOpts.OpenCL)
     return LangAS::opencl_constant;
-  if (LangOpts.SYCLIsDevice && !getenv("DISABLE_INFER_AS"))
+  if (LangOpts.SYCLIsDevice)
     // If we keep a literal string in constant address space, the following code
     // becomes illegal:
     //
