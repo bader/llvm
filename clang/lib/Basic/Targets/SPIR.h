@@ -153,35 +153,6 @@ public:
   void getTargetDefines(const LangOptions &Opts,
                         MacroBuilder &Builder) const override;
 };
-
-class LLVM_LIBRARY_VISIBILITY SPIR32SYCLDeviceTargetInfo
-    : public SPIR32TargetInfo {
-public:
-  SPIR32SYCLDeviceTargetInfo(const llvm::Triple &Triple,
-                             const TargetOptions &Opts)
-      : SPIR32TargetInfo(Triple, Opts) {
-    // This is workaround for exception_ptr class.
-    // Exceptions is not allowed in sycl device code but we should be able
-    // to parse host code. So we allow compilation of exception_ptr but
-    // if exceptions are used in device code we should emit a diagnostic.
-    MaxAtomicInlineWidth = 32;
-  }
-};
-
-class LLVM_LIBRARY_VISIBILITY SPIR64SYCLDeviceTargetInfo
-    : public SPIR64TargetInfo {
-public:
-  SPIR64SYCLDeviceTargetInfo(const llvm::Triple &Triple,
-                             const TargetOptions &Opts)
-      : SPIR64TargetInfo(Triple, Opts) {
-    // This is workaround for exception_ptr class.
-    // Exceptions is not allowed in sycl device code but we should be able
-    // to parse host code. So we allow compilation of exception_ptr but
-    // if exceptions are used in device code we should emit a diagnostic.
-    MaxAtomicInlineWidth = 64;
-  }
-};
-
 } // namespace targets
 } // namespace clang
 #endif // LLVM_CLANG_LIB_BASIC_TARGETS_SPIR_H
