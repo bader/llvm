@@ -12,13 +12,22 @@ struct Y : SpaceWaster, HasX {};
 
 void bar(HasX &hx);
 
+// CHECK:    @_ZZ4testvE3foo = internal addrspace(1) constant i32 66, align 4
+// CHECK:    @_ZZ4testvE4bars = internal addrspace(1) constant <{ [21 x i32], [235 x i32] }> <{ [21 x i32] [i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15, i32 16, i32 17, i32 18, i32 19, i32 20], [235 x i32] zeroinitializer }>, align 4
+// CHECK: @[[STR:[.a-zA-Z0-9_]+]] = private unnamed_addr constant [14 x i8] c"Hello, world!\00", align 1
+
+// CHECK-LABEL: @_Z3baz{{.*}}
 void baz(Y &y) {
+  // CHECK: %[[FIRST:[a-zA-Z0-9]+]] = bitcast %struct.Y addrspace(4)* %{{.*}} to i8 addrspace(4)*
+  // CHECK: %[[OFFSET:[a-zA-Z0-9]+]].ptr = getelementptr inbounds i8, i8 addrspace(4)* %[[FIRST]], i64 8
+  // CHECK: %[[SECOND:[a-zA-Z0-9]+]] = bitcast i8 addrspace(4)* %[[OFFSET]].ptr to %struct.HasX addrspace(4)*
+  // CHECK: call spir_func void @{{.*}}bar{{.*}}(%struct.HasX addrspace(4)* dereferenceable(4) %[[SECOND]])
   bar(y);
 }
 
+// CHECK-LABEL: @_Z4testv
 void test() {
   static const int foo = 0x42;
-  // CHECK:    @_ZZ4testvE3foo = internal addrspace(1) constant i32 66, align 4
 
   // Intentionally leave a part of an array uninitialized. This triggers a
   // different code path contrary to a fully initialized array.
@@ -27,9 +36,7 @@ void test() {
     11, 12, 13, 14, 15, 16, 17, 18, 19, 20
   };
   (void)bars;
-  // CHECK:    @_ZZ4testvE4bars = internal addrspace(1) constant <{ [21 x i32], [235 x i32] }> <{ [21 x i32] [i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15, i32 16, i32 17, i32 18, i32 19, i32 20], [235 x i32] zeroinitializer }>, align 4
 
-  // CHECK: @[[STR:[.a-zA-Z0-9_]+]] = private unnamed_addr constant [14 x i8] c"Hello, world!\00", align 1
 
   // CHECK: %i.ascast = addrspacecast i32* %i to i32 addrspace(4)*
   // CHECK: %[[ARR:[a-zA-Z0-9]+]] = alloca [42 x i32]
@@ -54,7 +61,7 @@ void test() {
   int arr[42];
   char *cpp = (char *)arr;
   *cpp = 43;
-  // CHECK:     %[[ARRDECAY:[a-zA-Z0-9]+]] = getelementptr inbounds [42 x i32], [42 x i32]* %[[ARR]], i64 0, i64 0
+  // CHECK: %[[ARRDECAY:[a-zA-Z0-9]+]] = getelementptr inbounds [42 x i32], [42 x i32]* %[[ARR]], i64 0, i64 0
   // CHECK: %[[ARRAS:[a-zA-Z0-9]+]] = addrspacecast i32* %[[ARRDECAY]] to i32 addrspace(4)*
   // CHECK: %[[ARRCAST:[a-zA-Z0-9]+]] = bitcast i32 addrspace(4)* %[[ARRAS]] to i8 addrspace(4)*
   // CHECK: store i8 addrspace(4)* %[[ARRCAST]], i8 addrspace(4)** %{{.*}}
@@ -62,11 +69,11 @@ void test() {
   int *aptr = arr + 10;
   if (aptr < arr + sizeof(arr))
     *aptr = 44;
-  // CHECK:    %[[VALAPTR:[0-9]+]] = load i32 addrspace(4)*, i32 addrspace(4)** %aptr
-  // CHECK:        %[[ARRDCY2:[a-zA-Z0-9]+]] = getelementptr inbounds [42 x i32], [42 x i32]* %[[ARR]], i64 0, i64 0
-  // CHECK:        %[[ADDPTR:[a-zA-Z0-9.]+]] = getelementptr inbounds i32, i32* %[[ARRDCY2]], i64 168
-  // CHECK:    %[[ADDPTRCAST:[a-zA-Z0-9.]+]] = addrspacecast i32* %[[ADDPTR]] to i32 addrspace(4)*
-  // CHECK:    %cmp{{[0-9]+}} = icmp ult i32 addrspace(4)* %[[VALAPTR]], %[[ADDPTRCAST]]
+  // CHECK: %[[VALAPTR:[0-9]+]] = load i32 addrspace(4)*, i32 addrspace(4)** %aptr
+  // CHECK: %[[ARRDCY2:[a-zA-Z0-9]+]] = getelementptr inbounds [42 x i32], [42 x i32]* %[[ARR]], i64 0, i64 0
+  // CHECK: %[[ADDPTR:[a-zA-Z0-9.]+]] = getelementptr inbounds i32, i32* %[[ARRDCY2]], i64 168
+  // CHECK: %[[ADDPTRCAST:[a-zA-Z0-9.]+]] = addrspacecast i32* %[[ADDPTR]] to i32 addrspace(4)*
+  // CHECK: %cmp{{[0-9]+}} = icmp ult i32 addrspace(4)* %[[VALAPTR]], %[[ADDPTRCAST]]
 
   const char *str = "Hello, world!";
   // CHECK: store i8 addrspace(4)* addrspacecast (i8* getelementptr inbounds ([14 x i8], [14 x i8]* @[[STR]], i64 0, i64 0) to i8 addrspace(4)*), i8 addrspace(4)** %[[STRVAL:[a-zA-Z0-9]+]], align 8
@@ -103,11 +110,6 @@ void test() {
   //
   Y yy;
   baz(yy);
-  // CHECK: define spir_func void @{{.*}}baz{{.*}}
-  // CHECK: %[[FIRST:[a-zA-Z0-9]+]] = bitcast %struct.{{.*}}.Y addrspace(4)* %{{.*}} to i8 addrspace(4)*
-  // CHECK: %[[OFFSET:[a-zA-Z0-9]+]].ptr = getelementptr inbounds i8, i8 addrspace(4)* %[[FIRST]], i64 8
-  // CHECK: %[[SECOND:[a-zA-Z0-9]+]] = bitcast i8 addrspace(4)* %[[OFFSET]].ptr to %struct.{{.*}}.HasX addrspace(4)*
-  // CHECK: call spir_func void @{{.*}}bar{{.*}}(%struct.{{.*}}.HasX addrspace(4)* dereferenceable(4) %[[SECOND]])
 }
 
 
