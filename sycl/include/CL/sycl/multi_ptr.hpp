@@ -407,12 +407,6 @@ public:
   multi_ptr(const multi_ptr &) = default;
   multi_ptr(multi_ptr &&) = default;
   multi_ptr(pointer_t pointer) : m_Pointer(pointer) {}
-#ifdef __SYCL_DEVICE_ONLY__
-  multi_ptr(const void *pointer) : m_Pointer((pointer_t)pointer) {
-    // TODO An implementation should reject an argument if the deduced
-    // address space is not compatible with Space.
-  }
-#endif
   multi_ptr(std::nullptr_t) : m_Pointer(nullptr) {}
   ~multi_ptr() = default;
 
