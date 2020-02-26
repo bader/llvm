@@ -8,7 +8,7 @@
 
 #pragma once
 #include <CL/__spirv/spirv_ops.hpp>
-#include <CL/sycl/access/access.hpp>
+#include <CL/sycl/access/access.hpp> 
 #include <CL/sycl/detail/common.hpp>
 #include <CL/sycl/detail/stl_type_traits.hpp>
 #include <cassert>
