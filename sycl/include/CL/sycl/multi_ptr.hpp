@@ -11,7 +11,7 @@
 #include <CL/sycl/access/access.hpp>
 #include <CL/sycl/detail/common.hpp>
 #include <CL/sycl/detail/stl_type_traits.hpp>
-#include <cassert> 
+#include <cassert>
 #include <cstddef>
 
 __SYCL_INLINE_NAMESPACE(cl) {
