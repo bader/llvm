@@ -2,8 +2,6 @@
 
 clang/ @erichkeane, @Fznamznon
 
-clang/**/Driver @mdtoguchi @AGindinson
-
 llvm-spirv/ @AlexeySotkin, @AlexeySachkov
 
 opencl-aot/ @dm-vodopyanov, @AlexeySachkov, @romanovvlad
