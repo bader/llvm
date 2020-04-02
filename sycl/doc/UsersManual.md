@@ -1,7 +1,7 @@
 # Users Manual
 
 The DPC++ Compiler contains many options to generate the desired binaries for
-your application.
+your application. 
 
 ## SYCL specific command line options
 
