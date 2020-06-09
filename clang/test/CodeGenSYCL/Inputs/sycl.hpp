@@ -318,5 +318,10 @@ public:
   }
 };
 
+  void __init(__attribute__((opencl_global)) dataT *Ptr,
+              range<dimensions> AccessRange,
+              range<dimensions> MemRange, id<dimensions> Offset) {}
+};
+
 } // namespace sycl
 } // namespace cl
