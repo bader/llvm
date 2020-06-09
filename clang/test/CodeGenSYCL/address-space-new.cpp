@@ -1,21 +1,5 @@
 // RUN: %clang_cc1 -fsycl -fsycl-is-device -triple spir64-unknown-unknown-sycldevice -disable-llvm-passes -emit-llvm %s -o - | FileCheck %s
 
-struct SpaceWaster {
-  int i, j;
-};
-
-struct HasX {
-  int x;
-};
-
-struct Y : SpaceWaster, HasX {};
-
-void bar(HasX &hx);
-
-void baz(Y &y) {
-  bar(y);
-}
-
 void test() {
   static const int foo = 0x42;
   // CHECK:    @_ZZ4testvE3foo = internal addrspace(1) constant i32 66, align 4
@@ -99,8 +83,25 @@ void test() {
   const char *select_str_trivial2 = false ? str : "Another hello world!";
   (void)select_str_trivial2;
   // CHECK: store i8 addrspace(4)* addrspacecast (i8* getelementptr inbounds ([21 x i8], [21 x i8]* @{{.*}}, i64 0, i64 0) to i8 addrspace(4)*), i8 addrspace(4)** %{{.*}}
-  //
-  //
+}
+
+struct SpaceWaster {
+  int i, j;
+};
+
+struct HasX {
+  int x;
+};
+
+struct Y : SpaceWaster, HasX {};
+
+void bar(HasX &hx);
+
+void baz(Y &y) {
+  bar(y);
+}
+
+void test2() {
   Y yy;
   baz(yy);
   // CHECK: define spir_func void @{{.*}}baz{{.*}}
@@ -110,7 +111,6 @@ void test() {
   // CHECK: call spir_func void @{{.*}}bar{{.*}}(%struct.HasX addrspace(4)* align 4 dereferenceable(4) %[[SECOND]])
 }
 
-
 template <typename name, typename Func>
 __attribute__((sycl_kernel)) void kernel_single_task(Func kernelFunc) {
   kernelFunc();
@@ -118,6 +118,6 @@ __attribute__((sycl_kernel)) void kernel_single_task(Func kernelFunc) {
 
 
 int main() {
-  kernel_single_task<class fake_kernel>([]() { test(); });
+  kernel_single_task<class fake_kernel>([]() { test(); test2();});
   return 0;
 }
