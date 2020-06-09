@@ -5,24 +5,10 @@
 // Dummy runtime classes to model SYCL API.
 namespace cl {
 namespace sycl {
-struct sampler_impl {
-#ifdef __SYCL_DEVICE_ONLY__
-  __ocl_sampler_t m_Sampler;
-#endif
-};
-
-class sampler {
-  struct sampler_impl impl;
-#ifdef __SYCL_DEVICE_ONLY__
-  void __init(__ocl_sampler_t Sampler) { impl.m_Sampler = Sampler; }
-#endif
-
-public:
-  void use(void) const {}
-};
-
 template <int dimensions = 1>
 class group {
+public:
+  group() = default; // fake constructor
 };
 
 namespace access {
@@ -156,47 +142,98 @@ public:
   void throw_asynchronous() {}
 };
 
+class auto_name {};
+template <typename Name, typename Type>
+struct get_kernel_name_t {
+  using name = Name;
+};
+template <typename Type>
+struct get_kernel_name_t<auto_name, Type> {
+  using name = Type;
+};
+
+namespace experimental {
+template <typename T, typename ID = T>
+class spec_constant {
+public:
+  spec_constant() {}
+  spec_constant(T Cst) {}
+
+  T get() const { // explicit access.
+    return T();   // Dummy implementaion.
+  }
+  operator T() const { // implicit conversion.
+    return get();
+  }
+};
+} // namespace experimental
+
+#define ATTR_SYCL_KERNEL __attribute__((sycl_kernel))
+template <typename KernelName = auto_name, typename KernelType>
+ATTR_SYCL_KERNEL void kernel_single_task(KernelType kernelFunc) {
+  kernelFunc();
+}
+
+template <typename KernelName, typename KernelType, int Dims>
+ATTR_SYCL_KERNEL void
+kernel_parallel_for(KernelType KernelFunc) {
+  KernelFunc(id<Dims>());
+}
+
+template <typename KernelName, typename KernelType, int Dims>
+ATTR_SYCL_KERNEL void
+kernel_parallel_for_work_group(KernelType KernelFunc) {
+  KernelFunc(group<Dims>());
+}
+
 class handler {
 public:
-  template <typename KernelName, typename KernelType, int dimensions>
-  ATTR_SYCL_KERNEL
-  void parallel_for(range<dimensions> numWorkItems, KernelType kernelFunc) {}
+  template <typename KernelName = auto_name, typename KernelType, int Dims>
+  void parallel_for(range<Dims> numWorkItems, KernelType kernelFunc) {
+    using NameT = typename get_kernel_name_t<KernelName, KernelType>::name;
+#ifdef __SYCL_DEVICE_ONLY__
+    kernel_parallel_for<NameT, KernelType, Dims>(kernelFunc);
+#else
+    kernelFunc();
+#endif
+  }
 
-  template <typename KernelName, typename KernelType, int dimensions>
-  ATTR_SYCL_KERNEL
-  void parallel_for(nd_range<dimensions> executionRange,
-                    KernelType kernelFunc) {}
+  template <typename KernelName = auto_name, typename KernelType, int Dims>
+  void parallel_for_work_group(range<Dims> numWorkGroups, range<Dims> WorkGroupSize, KernelType kernelFunc) {
+    using NameT = typename get_kernel_name_t<KernelName, KernelType>::name;
+#ifdef __SYCL_DEVICE_ONLY__
+    kernel_parallel_for_work_group<NameT, KernelType, Dims>(kernelFunc);
+#else
+    group<Dims> G;
+    kernelFunc(G);
+#endif
+  }
 
-  template <int dimensions>
-  ATTR_SYCL_KERNEL
-  void parallel_for(range<dimensions> numWorkItems, kernel syclKernel) {}
-
-  template <int dimensions>
-  ATTR_SYCL_KERNEL
-  void parallel_for(nd_range<dimensions> ndRange, kernel syclKernel) {}
-
-  template <typename KernelName, typename KernelType>
-  ATTR_SYCL_KERNEL
-  void single_task(KernelType kernelFunc) {}
-
-  template <typename KernelType>
-  ATTR_SYCL_KERNEL
-  void single_task(KernelType kernelFunc) {}
-
-  template <typename KernelName, typename KernelType, int dimensions>
-  ATTR_SYCL_KERNEL
-  void parallel_for(range<dimensions> numWorkItems, kernel syclKernel,
-                    KernelType kernelFunc) {}
-
-  template <typename KernelType, int dimensions>
-  ATTR_SYCL_KERNEL
-  void parallel_for(range<dimensions> numWorkItems, KernelType kernelFunc) {}
-
-  template <typename KernelName, typename KernelType, int dimensions>
-  ATTR_SYCL_KERNEL
-  void parallel_for(nd_range<dimensions> ndRange, kernel syclKernel,
-                    KernelType kernelFunc) {}
+  template <typename KernelName = auto_name, typename KernelType>
+  void single_task(KernelType kernelFunc) {
+    using NameT = typename get_kernel_name_t<KernelName, KernelType>::name;
+#ifdef __SYCL_DEVICE_ONLY__
+    kernel_single_task<NameT>(kernelFunc);
+#else
+    kernelFunc();
+#endif
+  }
 };
+
+class stream {
+public:
+  stream(unsigned long BufferSize, unsigned long MaxStatementSize,
+         handler &CGH) {}
+
+  void __init() {}
+
+  void __finalize() {}
+};
+
+template <typename T>
+const stream& operator<<(const stream &S, T&&) {
+  return S;
+}
 
 template <typename T, int dimensions = 1,
           typename AllocatorT = int /*fake type as AllocatorT is not used*/>
@@ -248,79 +285,6 @@ public:
 
   template <typename Destination>
   void set_final_data(Destination finalData = nullptr) {}
-};
-
-enum class image_channel_order : unsigned int {
-  a,
-  r,
-  rx,
-  rg,
-  rgx,
-  ra,
-  rgb,
-  rgbx,
-  rgba,
-  argb,
-  bgra,
-  intensity,
-  luminance,
-  abgr
-};
-
-enum class image_channel_type : unsigned int {
-  snorm_int8,
-  snorm_int16,
-  unorm_int8,
-  unorm_int16,
-  unorm_short_565,
-  unorm_short_555,
-  unorm_int_101010,
-  signed_int8,
-  signed_int16,
-  signed_int32,
-  unsigned_int8,
-  unsigned_int16,
-  unsigned_int32,
-  fp16,
-  fp32
-};
-
-template <int dimensions = 1, typename AllocatorT = int>
-class image {
-public:
-  image(image_channel_order Order, image_channel_type Type,
-        const range<dimensions> &Range, const property_list &PropList = {}) {}
-
-  /* -- common interface members -- */
-
-  image(const image &rhs) = default;
-
-  image(image &&rhs) = default;
-
-  image &operator=(const image &rhs) = default;
-
-  image &operator=(image &&rhs) = default;
-
-  ~image() = default;
-
-  template <typename dataT, access::mode accessmode>
-  accessor<dataT, dimensions, accessmode,
-           access::target::image, access::placeholder::false_t>
-  get_access(handler &commandGroupHandler) {
-    return accessor<dataT, dimensions, accessmode, access::target::image, access::placeholder::false_t>{};
-  }
-
-  template <typename dataT, access::mode accessmode>
-  accessor<dataT, dimensions, accessmode,
-           access::target::host_image, access::placeholder::false_t>
-  get_access() {
-    return accessor<dataT, dimensions, accessmode, access::target::host_image, access::placeholder::false_t>{};
-  }
-};
-
-  void __init(__attribute__((opencl_global)) dataT *Ptr,
-              range<dimensions> AccessRange,
-              range<dimensions> MemRange, id<dimensions> Offset) {}
 };
 
 } // namespace sycl

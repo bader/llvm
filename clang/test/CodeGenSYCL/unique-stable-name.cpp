@@ -40,12 +40,12 @@ template <typename KernelName, typename KernelType>
 int main() {
   kernel_single_task<class kernel>(
     []() {
-      printf(__unique_stable_name(int));
+      printf(__builtin_unique_stable_name(int));
       // CHECK: call spir_func void @printf(i8 addrspace(4)* addrspacecast (i8* getelementptr inbounds ([[INT_SIZE]], [[INT_SIZE]]* @[[INT]]
 
       auto x = [](){};
-      printf(__unique_stable_name(x));
-      printf(__unique_stable_name(decltype(x)));
+      printf(__builtin_unique_stable_name(x));
+      printf(__builtin_unique_stable_name(decltype(x)));
       // CHECK: call spir_func void @printf(i8 addrspace(4)* addrspacecast (i8* getelementptr inbounds ([[LAMBDA_X_SIZE]], [[LAMBDA_X_SIZE]]* @[[LAMBDA_X]]
       // CHECK: call spir_func void @printf(i8 addrspace(4)* addrspacecast (i8* getelementptr inbounds ([[LAMBDA_X_SIZE]], [[LAMBDA_X_SIZE]]* @[[LAMBDA_X]]
 
