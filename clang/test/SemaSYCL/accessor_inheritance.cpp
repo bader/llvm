@@ -17,6 +17,9 @@ struct AccessorDerived : AccessorBase,
   int C;
 };
 
+
+
+
 int main() {
   AccessorDerived DerivedObject;
   myQueue.submit([&](sycl::handler &h) {
