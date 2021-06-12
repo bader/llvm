@@ -7512,8 +7512,9 @@ void Clang::AddClangCLArgs(const ArgList &Args, types::ID InputType,
                            bool *EmitCodeView) const {
   unsigned RTOptionID = options::OPT__SLASH_MT;
   bool isNVPTX = getToolChain().getTriple().isNVPTX();
-  bool isSYCLDevice = getToolChain().getTriple().isSPIR();
-  bool isSYCL = Args.hasArg(options::OPT_fsycl) || isSYCLDevice;
+  bool isSPIR = getToolChain().getTriple().isSPIR();
+  // FIXME: isSYCL should not be enabled by "isSPIR"
+  bool isSYCL = Args.hasArg(options::OPT_fsycl) || isSPIR;
   // For SYCL Windows, /MD is the default.
   if (isSYCL)
     RTOptionID = options::OPT__SLASH_MD;
@@ -7525,7 +7526,7 @@ void Clang::AddClangCLArgs(const ArgList &Args, types::ID InputType,
 
   if (Arg *A = Args.getLastArg(options::OPT__SLASH_M_Group)) {
     RTOptionID = A->getOption().getID();
-    if (isSYCL && !isSYCLDevice &&
+    if (isSYCL && !isSPIR &&
         (RTOptionID == options::OPT__SLASH_MT ||
          RTOptionID == options::OPT__SLASH_MTd))
       // Use of /MT or /MTd is not supported for SYCL.
@@ -7537,9 +7538,9 @@ void Clang::AddClangCLArgs(const ArgList &Args, types::ID InputType,
   auto addPreDefines = [&](unsigned Defines) {
     if (Defines & addDEBUG)
       CmdArgs.push_back("-D_DEBUG");
-    if (Defines & addMT && !isSYCLDevice)
+    if (Defines & addMT && !isSPIR)
       CmdArgs.push_back("-D_MT");
-    if (Defines & addDLL && !isSYCLDevice)
+    if (Defines & addDLL && !isSPIR)
       CmdArgs.push_back("-D_DLL");
   };
   StringRef FlagForCRT;
