@@ -105,7 +105,7 @@ added to use `assert` or math functions:
 For Ahead-Of-Time compilation (AOT), the steps to use device libraries is
 same, no options need to be added to use `assert` or math functions:
 .. code:
-   clang++ -fsycl -fsycl-targets=spir64_x86_64-unknown-unknown-sycldevice \
+   clang++ -fsycl -fsycl-targets=spir64_x86_64-unknown-unknown \
        main.cpp -o main.o
 
 Example of usage

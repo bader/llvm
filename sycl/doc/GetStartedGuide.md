@@ -492,9 +492,9 @@ clang++ -fsycl -fsycl-targets=nvptx64-nvidia-cuda-sycldevice \
 To build simple-sycl-app ahead of time for GPU, CPU or Accelerator devices,
 specify the target architecture:
 
-```-fsycl-targets=spir64_gen-unknown-unknown-sycldevice``` for GPU,  
-```-fsycl-targets=spir64_x86_64-unknown-unknown-sycldevice``` for CPU,  
-```-fsycl-targets=spir64_fpga-unknown-unknown-sycldevice``` for Accelerator.
+```-fsycl-targets=spir64_gen-unknown-unknown``` for GPU,  
+```-fsycl-targets=spir64_x86_64-unknown-unknown``` for CPU,  
+```-fsycl-targets=spir64_fpga-unknown-unknown``` for Accelerator.
 
 Multiple target architectures are supported.
 
@@ -502,7 +502,7 @@ E.g., this command builds simple-sycl-app for GPU and CPU devices in
 ahead of time mode:
 
 ```bash
-clang++ -fsycl -fsycl-targets=spir64_gen-unknown-unknown-sycldevice,spir64_x86_64-unknown-unknown-sycldevice simple-sycl-app.cpp -o simple-sycl-app-aot.exe
+clang++ -fsycl -fsycl-targets=spir64_gen-unknown-unknown,spir64_x86_64-unknown-unknown simple-sycl-app.cpp -o simple-sycl-app-aot.exe
 ```
 
 Additionally, user can pass specific options of AOT compiler to
