@@ -202,7 +202,8 @@ public:
 class LLVM_LIBRARY_VISIBILITY WindowsX86_32SPIRTargetInfo
     : public WindowsTargetInfo<SPIR32TargetInfo> {
 public:
-  WindowsX86_32SPIRTargetInfo(const llvm::Triple &Triple, const TargetOptions &Opts)
+  WindowsX86_32SPIRTargetInfo(const llvm::Triple &Triple,
+                              const TargetOptions &Opts)
       : WindowsTargetInfo<SPIR32TargetInfo>(Triple, Opts) {
     DoubleAlign = LongLongAlign = 64;
     WCharType = UnsignedShort;
@@ -245,7 +246,8 @@ public:
 class LLVM_LIBRARY_VISIBILITY WindowsX86_64_SPIR64TargetInfo
     : public WindowsTargetInfo<SPIR64TargetInfo> {
 public:
-  WindowsX86_64_SPIR64TargetInfo(const llvm::Triple &Triple, const TargetOptions &Opts)
+  WindowsX86_64_SPIR64TargetInfo(const llvm::Triple &Triple,
+                                 const TargetOptions &Opts)
       : WindowsTargetInfo<SPIR64TargetInfo>(Triple, Opts) {
     LongWidth = LongAlign = 32;
     DoubleAlign = LongLongAlign = 64;
