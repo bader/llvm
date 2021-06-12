@@ -525,7 +525,7 @@ See [corresponding documentation](SpecializationConstants.md)
 #### CUDA support
 
 The driver supports compilation to NVPTX when the
-`nvptx64-nvidia-cuda-sycldevice` is passed to `-fsycl-targets`.
+`nvptx64-nvidia-cuda` is passed to `-fsycl-targets`.
 
 Unlike other AOT targets, the bitcode module linked from intermediate compiled
 objects never goes through SPIR-V. Instead it is passed directly in bitcode form
@@ -683,7 +683,7 @@ entry:
 }
 ```
 
-Is transformed into this in the `sycldevice` environment:
+Is transformed into this:
 
 ```LLVM
 define weak_odr dso_local i64 @other_function(i32* %0) {

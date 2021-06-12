@@ -32,7 +32,7 @@ and not recommended to use in production environment.
     * spir64_gen-unknown-unknown - generate code ahead of time for
       Intel Processor Graphics;
     Available in special build configuration:
-    * nvptx64-nvidia-cuda-sycldevice - generate code ahead of time for CUDA
+    * nvptx64-nvidia-cuda - generate code ahead of time for CUDA
       target;
 
 ## Language options

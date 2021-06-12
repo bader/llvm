@@ -100,7 +100,7 @@ triple=lit_config.params.get('SYCL_TRIPLE', 'spir64-unknown-unknown')
 lit_config.note("Triple: {}".format(triple))
 config.substitutions.append( ('%sycl_triple',  triple ) )
 
-if triple == 'nvptx64-nvidia-cuda-sycldevice':
+if triple == 'nvptx64-nvidia-cuda':
     config.available_features.add('cuda')
 
 # Set timeout for test = 10 mins
