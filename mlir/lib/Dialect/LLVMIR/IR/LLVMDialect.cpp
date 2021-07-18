@@ -36,6 +36,8 @@
 using namespace mlir;
 using namespace mlir::LLVM;
 
+#include "mlir/Dialect/LLVMIR/LLVMOpsDialect.cpp.inc"
+
 static constexpr const char kVolatileAttrName[] = "volatile_";
 static constexpr const char kNonTemporalAttrName[] = "nontemporal";
 
@@ -134,11 +136,15 @@ static ParseResult parseCmpOp(OpAsmParser &parser, OperationState &result) {
   if (!isCompatibleType(type))
     return parser.emitError(trailingTypeLoc,
                             "expected LLVM dialect-compatible type");
-  if (LLVM::isCompatibleVectorType(type))
-    resultType = LLVM::getFixedVectorType(
-        resultType, LLVM::getVectorNumElements(type).getFixedValue());
-  assert(!type.isa<LLVM::LLVMScalableVectorType>() &&
-         "unhandled scalable vector");
+  if (LLVM::isCompatibleVectorType(type)) {
+    if (type.isa<LLVM::LLVMScalableVectorType>()) {
+      resultType = LLVM::LLVMScalableVectorType::get(
+          resultType, LLVM::getVectorNumElements(type).getKnownMinValue());
+    } else {
+      resultType = LLVM::getFixedVectorType(
+          resultType, LLVM::getVectorNumElements(type).getFixedValue());
+    }
+  }
 
   result.addTypes({resultType});
   return success();
@@ -1046,6 +1052,16 @@ static ParseResult parseExtractValueOp(OpAsmParser &parser,
   return success();
 }
 
+OpFoldResult LLVM::ExtractValueOp::fold(ArrayRef<Attribute> operands) {
+  auto insertValueOp = container().getDefiningOp<InsertValueOp>();
+  while (insertValueOp) {
+    if (position() == insertValueOp.position())
+      return insertValueOp.value();
+    insertValueOp = insertValueOp.container().getDefiningOp<InsertValueOp>();
+  }
+  return {};
+}
+
 //===----------------------------------------------------------------------===//
 // Printing/parsing for LLVM::InsertElementOp.
 //===----------------------------------------------------------------------===//
@@ -1253,7 +1269,7 @@ static StringRef getUnnamedAddrAttrName() { return "unnamed_addr"; }
 void GlobalOp::build(OpBuilder &builder, OperationState &result, Type type,
                      bool isConstant, Linkage linkage, StringRef name,
                      Attribute value, uint64_t alignment, unsigned addrSpace,
-                     ArrayRef<NamedAttribute> attrs) {
+                     bool dsoLocal, ArrayRef<NamedAttribute> attrs) {
   result.addAttribute(SymbolTable::getSymbolAttrName(),
                       builder.getStringAttr(name));
   result.addAttribute("type", TypeAttr::get(type));
@@ -1261,6 +1277,8 @@ void GlobalOp::build(OpBuilder &builder, OperationState &result, Type type,
     result.addAttribute("constant", builder.getUnitAttr());
   if (value)
     result.addAttribute("value", value);
+  if (dsoLocal)
+    result.addAttribute("dso_local", builder.getUnitAttr());
 
   // Only add an alignment attribute if the "alignment" input
   // is different from 0. The value must also be a power of two, but
@@ -1742,7 +1760,7 @@ Block *LLVMFuncOp::addEntryBlock() {
 
 void LLVMFuncOp::build(OpBuilder &builder, OperationState &result,
                        StringRef name, Type type, LLVM::Linkage linkage,
-                       ArrayRef<NamedAttribute> attrs,
+                       bool dsoLocal, ArrayRef<NamedAttribute> attrs,
                        ArrayRef<DictionaryAttr> argAttrs) {
   result.addRegion();
   result.addAttribute(SymbolTable::getSymbolAttrName(),
@@ -1751,6 +1769,8 @@ void LLVMFuncOp::build(OpBuilder &builder, OperationState &result,
   result.addAttribute(getLinkageAttrName(),
                       builder.getI64IntegerAttr(static_cast<int64_t>(linkage)));
   result.attributes.append(attrs.begin(), attrs.end());
+  if (dsoLocal)
+    result.addAttribute("dso_local", builder.getUnitAttr());
   if (argAttrs.empty())
     return;
 

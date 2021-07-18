@@ -228,6 +228,14 @@ void HwasanTagMismatch(uptr addr, uptr access_info, uptr *registers_frame,
   __builtin_unreachable();
 }
 
+Thread *GetCurrentThread() {
+  uptr *ThreadLongPtr = GetCurrentThreadLongPtr();
+  if (UNLIKELY(*ThreadLongPtr == 0))
+    return nullptr;
+  auto *R = (StackAllocationsRingBuffer *)ThreadLongPtr;
+  return hwasanThreadList().GetThreadByBufferAddress((uptr)R->Next());
+}
+
 } // namespace __hwasan
 
 using namespace __hwasan;
@@ -267,7 +275,7 @@ static void InitLoadedGlobals() {
 static void InitInstrumentation() {
   if (hwasan_instrumentation_inited) return;
 
-  InitPrctl();
+  InitializeOsSupport();
 
   if (!InitShadow()) {
     Printf("FATAL: HWAddressSanitizer cannot mmap the shadow memory.\n");
@@ -276,7 +284,6 @@ static void InitInstrumentation() {
   }
 
   InitThreads();
-  hwasanThreadList().CreateCurrentThread();
 
   hwasan_instrumentation_inited = 1;
 }
@@ -546,7 +553,7 @@ void __hwasan_print_memory_usage() {
   Printf("%s\n", s.data());
 }
 
-static const u8 kFallbackTag = 0xBB;
+static const u8 kFallbackTag = 0xBB & kTagMask;
 
 u8 __hwasan_generate_tag() {
   Thread *t = GetCurrentThread();
@@ -567,4 +574,12 @@ void __sanitizer_print_stack_trace() {
   GET_FATAL_STACK_TRACE_PC_BP(StackTrace::GetCurrentPc(), GET_CURRENT_FRAME());
   stack.Print();
 }
+
+// Entry point for interoperability between __hwasan_tag_mismatch (ASM) and the
+// rest of the mismatch handling code (C++).
+void __hwasan_tag_mismatch4(uptr addr, uptr access_info, uptr *registers_frame,
+                            size_t outsize) {
+  __hwasan::HwasanTagMismatch(addr, access_info, registers_frame, outsize);
+}
+
 } // extern "C"

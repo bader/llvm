@@ -24,7 +24,7 @@
 __SYCL_INLINE_NAMESPACE(cl) {
 namespace sycl {
 
-handler::handler(shared_ptr_class<detail::queue_impl> Queue, bool IsHost)
+handler::handler(std::shared_ptr<detail::queue_impl> Queue, bool IsHost)
     : MQueue(std::move(Queue)), MIsHost(IsHost) {
   MSharedPtrStorage.emplace_back(
       std::make_shared<std::vector<detail::ExtendedMemberT>>());
@@ -131,7 +131,7 @@ event handler::finalize() {
     }
   }
 
-  unique_ptr_class<detail::CG> CommandGroup;
+  std::unique_ptr<detail::CG> CommandGroup;
   switch (getType()) {
   case detail::CG::KERNEL:
   case detail::CG::RUN_ON_HOST_INTEL: {
@@ -188,6 +188,12 @@ event handler::finalize() {
         std::move(MSharedPtrStorage), std::move(MRequirements),
         std::move(MEvents), MCodeLoc));
     break;
+  case detail::CG::ADVISE_USM:
+    CommandGroup.reset(new detail::CGAdviseUSM(
+        MDstPtr, MLength, std::move(MArgsStorage), std::move(MAccStorage),
+        std::move(MSharedPtrStorage), std::move(MRequirements),
+        std::move(MEvents), MCGType, MCodeLoc));
+    break;
   case detail::CG::CODEPLAY_HOST_TASK:
     CommandGroup.reset(new detail::CGHostTask(
         std::move(MHostTask), MQueue, MQueue->getContextImplPtr(),
@@ -243,7 +249,7 @@ static void addArgsForGlobalAccessor(detail::Requirement *AccImpl, size_t Index,
                                      size_t &IndexShift, int Size,
                                      bool IsKernelCreatedFromSource,
                                      size_t GlobalSize,
-                                     vector_class<detail::ArgDesc> &Args,
+                                     std::vector<detail::ArgDesc> &Args,
                                      bool isESIMD) {
   using detail::kernel_param_kind_t;
   if (AccImpl->PerWI)
@@ -464,11 +470,11 @@ void handler::extractArgsAndReqsFromLambda(
 // Calling methods of kernel_impl requires knowledge of class layout.
 // As this is impossible in header, there's a function that calls necessary
 // method inside the library and returns the result.
-string_class handler::getKernelName() {
+std::string handler::getKernelName() {
   return MKernel->get_info<info::kernel::function_name>();
 }
 
-void handler::barrier(const vector_class<event> &WaitList) {
+void handler::barrier(const std::vector<event> &WaitList) {
   throwIfActionIsCreated();
   MCGType = detail::CG::BARRIER_WAITLIST;
   MEventsWaitWithBarrier.resize(WaitList.size());
@@ -482,7 +488,7 @@ void handler::memcpy(void *Dest, const void *Src, size_t Count) {
   MSrcPtr = const_cast<void *>(Src);
   MDstPtr = Dest;
   MLength = Count;
-  MCGType = detail::CG::COPY_USM;
+  setType(detail::CG::COPY_USM);
 }
 
 void handler::memset(void *Dest, int Value, size_t Count) {
@@ -490,14 +496,35 @@ void handler::memset(void *Dest, int Value, size_t Count) {
   MDstPtr = Dest;
   MPattern.push_back(static_cast<char>(Value));
   MLength = Count;
-  MCGType = detail::CG::FILL_USM;
+  setType(detail::CG::FILL_USM);
 }
 
 void handler::prefetch(const void *Ptr, size_t Count) {
   throwIfActionIsCreated();
   MDstPtr = const_cast<void *>(Ptr);
   MLength = Count;
-  MCGType = detail::CG::PREFETCH_USM;
+  setType(detail::CG::PREFETCH_USM);
+}
+
+void handler::mem_advise(const void *Ptr, size_t Count, int Advice) {
+  throwIfActionIsCreated();
+  MDstPtr = const_cast<void *>(Ptr);
+  MLength = Count;
+  setType(detail::CG::ADVISE_USM);
+
+  assert(!MSharedPtrStorage.empty());
+
+  std::lock_guard<std::mutex> Lock(
+      detail::GlobalHandler::instance().getHandlerExtendedMembersMutex());
+
+  std::shared_ptr<std::vector<detail::ExtendedMemberT>> ExtendedMembersVec =
+      detail::convertToExtendedMembers(MSharedPtrStorage[0]);
+
+  detail::ExtendedMemberT EMember = {
+      detail::ExtendedMembersType::HANDLER_MEM_ADVICE,
+      std::make_shared<pi_mem_advice>(pi_mem_advice(Advice))};
+
+  ExtendedMembersVec->push_back(EMember);
 }
 } // namespace sycl
 } // __SYCL_INLINE_NAMESPACE(cl)

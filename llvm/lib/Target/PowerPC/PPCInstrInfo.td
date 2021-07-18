@@ -635,6 +635,12 @@ def PPCRegG8RCAsmOperand : AsmOperandClass {
 def g8rc : RegisterOperand<G8RC> {
   let ParserMatchClass = PPCRegG8RCAsmOperand;
 }
+def PPCRegG8pRCAsmOperand : AsmOperandClass {
+  let Name = "RegG8pRC"; let PredicateMethod = "isEvenRegNumber";
+}
+def g8prc : RegisterOperand<G8pRC> {
+  let ParserMatchClass = PPCRegG8pRCAsmOperand;
+}
 def PPCRegGPRCNoR0AsmOperand : AsmOperandClass {
   let Name = "RegGPRCNoR0"; let PredicateMethod = "isRegNumber";
 }
@@ -5405,3 +5411,8 @@ def DWBytes3210 {
 // swap the high word and low word.
 def : Pat<(i64 (bitreverse i64:$A)),
   (OR8 (RLDICR DWBytes7654.DWord, 32, 31), DWBytes3210.DWord)>;
+
+def : Pat<(int_ppc_lwarx ForceXForm:$dst),
+          (LWARX ForceXForm:$dst)>;
+def : Pat<(int_ppc_stwcx ForceXForm:$dst, gprc:$A),
+          (STWCX gprc:$A, ForceXForm:$dst)>;
