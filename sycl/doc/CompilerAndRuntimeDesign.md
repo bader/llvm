@@ -322,7 +322,7 @@ versions/Gen architectures. For example, to make the device binary
 compatible with all Intel Gen9 GPU platforms, one could use:
 
 ```
--fsycl -fsycl-targets=spir64_gen-unknown-unknown-sycldevice
+-fsycl -fsycl-targets=spir64_gen-unknown-unknown
 -Xsycl-target-backend "-device gen9"
 ```
 
