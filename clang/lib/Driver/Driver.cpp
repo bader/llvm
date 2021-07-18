@@ -133,41 +133,41 @@ std::string Driver::GetResourcesPath(StringRef BinaryPath,
 Driver::Driver(StringRef ClangExecutable, StringRef TargetTriple,
                DiagnosticsEngine &Diags, std::string Title,
                IntrusiveRefCntPtr<llvm::vfs::FileSystem> VFS)
-  : Diags(Diags), VFS(std::move(VFS)), Mode(GCCMode),
-  SaveTemps(SaveTempsNone), BitcodeEmbed(EmbedNone), LTOMode(LTOK_None),
-  ClangExecutable(ClangExecutable), SysRoot(DEFAULT_SYSROOT),
-  DriverTitle(Title), CCPrintStatReportFilename(), CCPrintOptionsFilename(),
-  CCPrintHeadersFilename(), CCLogDiagnosticsFilename(),
-  CCCPrintBindings(false), CCPrintOptions(false), CCPrintHeaders(false),
-  CCLogDiagnostics(false), CCGenDiagnostics(false),
-  CCPrintProcessStats(false), TargetTriple(TargetTriple),
-  CCCGenericGCCName(""), Saver(Alloc), CheckInputsExist(true),
-  GenReproducer(false), SuppressMissingInputWarning(false) {
-    // Provide a sane fallback if no VFS is specified.
-    if (!this->VFS)
-      this->VFS = llvm::vfs::getRealFileSystem();
+    : Diags(Diags), VFS(std::move(VFS)), Mode(GCCMode),
+      SaveTemps(SaveTempsNone), BitcodeEmbed(EmbedNone), LTOMode(LTOK_None),
+      ClangExecutable(ClangExecutable), SysRoot(DEFAULT_SYSROOT),
+      DriverTitle(Title), CCPrintStatReportFilename(), CCPrintOptionsFilename(),
+      CCPrintHeadersFilename(), CCLogDiagnosticsFilename(),
+      CCCPrintBindings(false), CCPrintOptions(false), CCPrintHeaders(false),
+      CCLogDiagnostics(false), CCGenDiagnostics(false),
+      CCPrintProcessStats(false), TargetTriple(TargetTriple),
+      CCCGenericGCCName(""), Saver(Alloc), CheckInputsExist(true),
+      GenReproducer(false), SuppressMissingInputWarning(false) {
+  // Provide a sane fallback if no VFS is specified.
+  if (!this->VFS)
+    this->VFS = llvm::vfs::getRealFileSystem();
 
-    Name = std::string(llvm::sys::path::filename(ClangExecutable));
-    Dir = std::string(llvm::sys::path::parent_path(ClangExecutable));
-    InstalledDir = Dir; // Provide a sensible default installed dir.
+  Name = std::string(llvm::sys::path::filename(ClangExecutable));
+  Dir = std::string(llvm::sys::path::parent_path(ClangExecutable));
+  InstalledDir = Dir; // Provide a sensible default installed dir.
 
-    if ((!SysRoot.empty()) && llvm::sys::path::is_relative(SysRoot)) {
-      // Prepend InstalledDir if SysRoot is relative
-      SmallString<128> P(InstalledDir);
-      llvm::sys::path::append(P, SysRoot);
-      SysRoot = std::string(P);
-    }
+  if ((!SysRoot.empty()) && llvm::sys::path::is_relative(SysRoot)) {
+    // Prepend InstalledDir if SysRoot is relative
+    SmallString<128> P(InstalledDir);
+    llvm::sys::path::append(P, SysRoot);
+    SysRoot = std::string(P);
+  }
 
 #if defined(CLANG_CONFIG_FILE_SYSTEM_DIR)
-    SystemConfigDir = CLANG_CONFIG_FILE_SYSTEM_DIR;
+  SystemConfigDir = CLANG_CONFIG_FILE_SYSTEM_DIR;
 #endif
 #if defined(CLANG_CONFIG_FILE_USER_DIR)
-    UserConfigDir = CLANG_CONFIG_FILE_USER_DIR;
+  UserConfigDir = CLANG_CONFIG_FILE_USER_DIR;
 #endif
 
-    // Compute the path to the resource directory.
-    ResourceDir = GetResourcesPath(ClangExecutable, CLANG_RESOURCE_DIR);
-  }
+  // Compute the path to the resource directory.
+  ResourceDir = GetResourcesPath(ClangExecutable, CLANG_RESOURCE_DIR);
+}
 
 void Driver::ParseDriverMode(StringRef ProgramName,
                              ArrayRef<const char *> Args) {
@@ -186,18 +186,18 @@ void Driver::ParseDriverMode(StringRef ProgramName,
 
 void Driver::setDriverModeFromOption(StringRef Opt) {
   const std::string OptName =
-    getOpts().getOption(options::OPT_driver_mode).getPrefixedName();
+      getOpts().getOption(options::OPT_driver_mode).getPrefixedName();
   if (!Opt.startswith(OptName))
     return;
   StringRef Value = Opt.drop_front(OptName.size());
 
   if (auto M = llvm::StringSwitch<llvm::Optional<DriverMode>>(Value)
-      .Case("gcc", GCCMode)
-      .Case("g++", GXXMode)
-      .Case("cpp", CPPMode)
-      .Case("cl", CLMode)
-      .Case("flang", FlangMode)
-      .Default(None))
+                   .Case("gcc", GCCMode)
+                   .Case("g++", GXXMode)
+                   .Case("cpp", CPPMode)
+                   .Case("cl", CLMode)
+                   .Case("flang", FlangMode)
+                   .Default(None))
     Mode = *M;
   else
     Diag(diag::err_drv_unsupported_option_argument) << OptName << Value;
@@ -212,7 +212,7 @@ InputArgList Driver::ParseArgStrings(ArrayRef<const char *> ArgStrings,
   unsigned IncludedFlagsBitmask;
   unsigned ExcludedFlagsBitmask;
   std::tie(IncludedFlagsBitmask, ExcludedFlagsBitmask) =
-    getIncludeExcludeOptionFlagMasks(IsClCompatMode);
+      getIncludeExcludeOptionFlagMasks(IsClCompatMode);
 
   // Make sure that Flang-only options don't pollute the Clang output
   // TODO: Make sure that Clang-only options don't pollute Flang output
@@ -221,16 +221,16 @@ InputArgList Driver::ParseArgStrings(ArrayRef<const char *> ArgStrings,
 
   unsigned MissingArgIndex, MissingArgCount;
   InputArgList Args =
-    getOpts().ParseArgs(ArgStrings, MissingArgIndex, MissingArgCount,
-                        IncludedFlagsBitmask, ExcludedFlagsBitmask);
+      getOpts().ParseArgs(ArgStrings, MissingArgIndex, MissingArgCount,
+                          IncludedFlagsBitmask, ExcludedFlagsBitmask);
 
   // Check for missing argument error.
   if (MissingArgCount) {
     Diag(diag::err_drv_missing_argument)
-      << Args.getArgString(MissingArgIndex) << MissingArgCount;
+        << Args.getArgString(MissingArgIndex) << MissingArgCount;
     ContainsError |=
-      Diags.getDiagnosticLevel(diag::err_drv_missing_argument,
-                               SourceLocation()) > DiagnosticsEngine::Warning;
+        Diags.getDiagnosticLevel(diag::err_drv_missing_argument,
+                                 SourceLocation()) > DiagnosticsEngine::Warning;
   }
 
   // Check for unsupported options.
@@ -239,9 +239,9 @@ InputArgList Driver::ParseArgStrings(ArrayRef<const char *> ArgStrings,
       unsigned DiagID;
       auto ArgString = A->getAsString(Args);
       std::string Nearest;
-      if (getOpts().findNearest(
-          ArgString, Nearest, IncludedFlagsBitmask,
-          ExcludedFlagsBitmask | options::Unsupported) > 1) {
+      if (getOpts().findNearest(ArgString, Nearest, IncludedFlagsBitmask,
+                                ExcludedFlagsBitmask | options::Unsupported) >
+          1) {
         DiagID = diag::err_drv_unsupported_opt;
         Diag(DiagID) << ArgString;
       } else {
@@ -249,7 +249,7 @@ InputArgList Driver::ParseArgStrings(ArrayRef<const char *> ArgStrings,
         Diag(DiagID) << ArgString << Nearest;
       }
       ContainsError |= Diags.getDiagnosticLevel(DiagID, SourceLocation()) >
-        DiagnosticsEngine::Warning;
+                       DiagnosticsEngine::Warning;
       continue;
     }
 
@@ -257,8 +257,8 @@ InputArgList Driver::ParseArgStrings(ArrayRef<const char *> ArgStrings,
     if (A->getOption().matches(options::OPT_mcpu_EQ) && A->containsValue("")) {
       Diag(diag::warn_drv_empty_joined_argument) << A->getAsString(Args);
       ContainsError |= Diags.getDiagnosticLevel(
-        diag::warn_drv_empty_joined_argument,
-        SourceLocation()) > DiagnosticsEngine::Warning;
+                           diag::warn_drv_empty_joined_argument,
+                           SourceLocation()) > DiagnosticsEngine::Warning;
     }
   }
 
@@ -266,19 +266,19 @@ InputArgList Driver::ParseArgStrings(ArrayRef<const char *> ArgStrings,
     unsigned DiagID;
     auto ArgString = A->getAsString(Args);
     std::string Nearest;
-    if (getOpts().findNearest(
-        ArgString, Nearest, IncludedFlagsBitmask, ExcludedFlagsBitmask) > 1) {
+    if (getOpts().findNearest(ArgString, Nearest, IncludedFlagsBitmask,
+                              ExcludedFlagsBitmask) > 1) {
       DiagID = IsCLMode() ? diag::warn_drv_unknown_argument_clang_cl
-        : diag::err_drv_unknown_argument;
+                          : diag::err_drv_unknown_argument;
       Diags.Report(DiagID) << ArgString;
     } else {
       DiagID = IsCLMode()
-        ? diag::warn_drv_unknown_argument_clang_cl_with_suggestion
-        : diag::err_drv_unknown_argument_with_suggestion;
+                   ? diag::warn_drv_unknown_argument_clang_cl_with_suggestion
+                   : diag::err_drv_unknown_argument_with_suggestion;
       Diags.Report(DiagID) << ArgString << Nearest;
     }
     ContainsError |= Diags.getDiagnosticLevel(DiagID, SourceLocation()) >
-      DiagnosticsEngine::Warning;
+                     DiagnosticsEngine::Warning;
   }
 
   return Args;
@@ -510,7 +510,7 @@ static llvm::Triple computeTargetTriple(const Driver &D,
   // On AIX, the env OBJECT_MODE may affect the resulting arch variant.
   if (Target.isOSAIX()) {
     if (Optional<std::string> ObjectModeValue =
-        llvm::sys::Process::GetEnv("OBJECT_MODE")) {
+            llvm::sys::Process::GetEnv("OBJECT_MODE")) {
       StringRef ObjectMode = *ObjectModeValue;
       llvm::Triple::ArchType AT = llvm::Triple::UnknownArch;
 

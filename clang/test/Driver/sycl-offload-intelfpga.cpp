@@ -356,7 +356,6 @@
 // CHK-FPGA-DEP-FILES-OBJ-PHASES: 10: clang-offload-wrapper, {9}, object, (device-sycl)
 // CHK-FPGA-DEP-FILES-OBJ-PHASES: 11: offload, "host-sycl ({{.*}})" {2}, "device-sycl (spir64_fpga-unknown-unknown)" {10}, image
 
-
 /// -fintelfpga output report file test
 // RUN: mkdir -p %t_dir
 // RUN: %clangxx -### -fsycl -fintelfpga -Xshardware %s -o %t_dir/file.out 2>&1 \
