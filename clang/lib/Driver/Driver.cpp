@@ -239,9 +239,9 @@ InputArgList Driver::ParseArgStrings(ArrayRef<const char *> ArgStrings,
       unsigned DiagID;
       auto ArgString = A->getAsString(Args);
       std::string Nearest;
-      if (getOpts().findNearest(ArgString, Nearest, IncludedFlagsBitmask,
-                                ExcludedFlagsBitmask | options::Unsupported) >
-          1) {
+      if (getOpts().findNearest(
+            ArgString, Nearest, IncludedFlagsBitmask,
+            ExcludedFlagsBitmask | options::Unsupported) > 1) {
         DiagID = diag::err_drv_unsupported_opt;
         Diag(DiagID) << ArgString;
       } else {
@@ -266,8 +266,8 @@ InputArgList Driver::ParseArgStrings(ArrayRef<const char *> ArgStrings,
     unsigned DiagID;
     auto ArgString = A->getAsString(Args);
     std::string Nearest;
-    if (getOpts().findNearest(ArgString, Nearest, IncludedFlagsBitmask,
-                              ExcludedFlagsBitmask) > 1) {
+    if (getOpts().findNearest(
+          ArgString, Nearest, IncludedFlagsBitmask, ExcludedFlagsBitmask) > 1) {
       DiagID = IsCLMode() ? diag::warn_drv_unknown_argument_clang_cl
                           : diag::err_drv_unknown_argument;
       Diags.Report(DiagID) << ArgString;
@@ -299,11 +299,11 @@ phases::ID Driver::getFinalPhase(const DerivedArgList &DAL,
       (PhaseArg = DAL.getLastArg(options::OPT__SLASH_P))) {
     FinalPhase = phases::Preprocess;
 
-    // --precompile only runs up to precompilation.
+  // --precompile only runs up to precompilation.
   } else if ((PhaseArg = DAL.getLastArg(options::OPT__precompile))) {
     FinalPhase = phases::Precompile;
 
-    // -{fsyntax-only,-analyze,emit-ast} only run up to the compiler.
+  // -{fsyntax-only,-analyze,emit-ast} only run up to the compiler.
   } else if ((PhaseArg = DAL.getLastArg(options::OPT_fsyntax_only)) ||
              (PhaseArg = DAL.getLastArg(options::OPT_print_supported_cpus)) ||
              (PhaseArg = DAL.getLastArg(options::OPT_module_file_info)) ||
@@ -315,16 +315,16 @@ phases::ID Driver::getFinalPhase(const DerivedArgList &DAL,
              (PhaseArg = DAL.getLastArg(options::OPT_emit_ast))) {
     FinalPhase = phases::Compile;
 
-    // -S only runs up to the backend.
+  // -S only runs up to the backend.
   } else if ((PhaseArg = DAL.getLastArg(options::OPT_S)) ||
              (PhaseArg = DAL.getLastArg(options::OPT_fsycl_device_only))) {
     FinalPhase = phases::Backend;
 
-    // -c compilation only runs up to the assembler.
+  // -c compilation only runs up to the assembler.
   } else if ((PhaseArg = DAL.getLastArg(options::OPT_c))) {
     FinalPhase = phases::Assemble;
 
-    // Otherwise do everything.
+  // Otherwise do everything.
   } else
     FinalPhase = phases::Link;
 
@@ -437,8 +437,8 @@ DerivedArgList *Driver::TranslateInputArgs(const InputArgList &Args) const {
       DAL->AddFlagArg(0, Opts.getOption(options::OPT_g_Flag));
   }
 
-  // Add a default value of -mlinker-version=, if one was given and the user
-  // didn't specify one.
+// Add a default value of -mlinker-version=, if one was given and the user
+// didn't specify one.
 #if defined(HOST_LINK_VERSION)
   if (!Args.hasArg(options::OPT_mlinker_version_EQ) &&
       strlen(HOST_LINK_VERSION) > 0) {
