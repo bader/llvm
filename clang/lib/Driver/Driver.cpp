@@ -909,18 +909,7 @@ void Driver::CreateOffloadingDeviceToolChains(Compilation &C,
     if (SYCLTargetsValues) {
       if (SYCLTargetsValues->getNumValues()) {
         for (StringRef Val : SYCLTargetsValues->getValues()) {
-          SmallString<64> Target = Val;
-          constexpr StringRef SyclDeviceTripleSuffix = "-sycldevice";
-          if (Val.endswith(SyclDeviceTripleSuffix)) {
-            Diag(clang::diag::warn_drv_sycldevice_in_environment_deprecated) <<
-              Val;
-
-            Target = StringRef(Val.begin(),
-                               Val.size() - SyclDeviceTripleSuffix.size());
-            Target += StringRef("-unknown");
-          }
-
-          llvm::Triple TT(MakeSYCLDeviceTriple(Target));
+          llvm::Triple TT(MakeSYCLDeviceTriple(Val));
           if (!isValidSYCLTriple(TT)) {
             Diag(clang::diag::err_drv_invalid_sycl_target) << Val;
             continue;
@@ -935,9 +924,17 @@ void Driver::CreateOffloadingDeviceToolChains(Compilation &C,
             continue;
           }
 
+          // Warn about deprated `sycldevice` environment component
+          if (TT.getEnvironmentName() == "sycldevice") {
+            Diag(clang::diag::warn_drv_sycl_deprecated_triple_component)
+                << TT.getEnvironmentName();
+            TT.setEnvironment(
+                llvm::Triple::EnvironmentType::UnknownEnvironment);
+          }
+
           // Store the current triple so that we can check for duplicates in
           // the following iterations.
-          FoundNormalizedTriples[NormalizedName] = Target;
+          FoundNormalizedTriples[NormalizedName] = Val;
           UniqueSYCLTriplesVec.push_back(TT);
         }
       } else
