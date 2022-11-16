@@ -521,6 +521,8 @@ std::unique_ptr<lto::LTO> createLTO(
   Conf.CGOptLevel = *CGOptLevelOrNone;
   Conf.OptLevel = OptLevel[1] - '0';
   Conf.DefaultTriple = Triple.getTriple();
+  if (Triple.isSPIR())
+    Conf.OverrideTriple = "spirv64-unknown-unknown";
 
   LTOError = false;
   Conf.DiagHandler = diagnosticHandler;
