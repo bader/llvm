@@ -441,6 +441,10 @@ Expected<StringRef> linkDevice(ArrayRef<StringRef> InputFiles,
   case Triple::nvptx:
   case Triple::nvptx64:
   case Triple::amdgcn:
+  case Triple::spirv32:
+  case Triple::spirv64:
+  case Triple::spir:
+  case Triple::spir64:
   case Triple::x86:
   case Triple::x86_64:
   case Triple::aarch64:
@@ -511,7 +515,7 @@ std::unique_ptr<lto::LTO> createLTO(
       lto::createInProcessThinBackend(llvm::heavyweight_hardware_concurrency());
 
   Conf.CPU = Arch.str();
-  Conf.Options = codegen::InitTargetOptionsFromCodeGenFlags(Triple);
+  //Conf.Options = codegen::InitTargetOptionsFromCodeGenFlags(Triple);
 
   StringRef OptLevel = Args.getLastArgValue(OPT_opt_level, "O2");
   Conf.MAttrs = Features;
@@ -650,7 +654,7 @@ Error linkBitcodeFiles(SmallVectorImpl<OffloadFile> &InputFiles,
 
   // We assume visibility of the whole program if every input file was bitcode.
   auto Features = getTargetFeatures(BitcodeInputFiles);
-  auto LTOBackend = Args.hasArg(OPT_embed_bitcode)
+  auto LTOBackend = Args.hasArg(OPT_embed_bitcode) || Triple.isSPIR()
                         ? createLTO(Args, Features, OutputBitcode)
                         : createLTO(Args, Features);
 
