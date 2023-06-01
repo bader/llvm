@@ -912,6 +912,10 @@ wrapDeviceImages(ArrayRef<std::unique_ptr<MemoryBuffer>> Buffers,
     if (Error Err = wrapHIPBinary(M, BuffersToWrap.front()))
       return std::move(Err);
     break;
+  case OFK_SYCL:
+    if (Error Err = wrapSYCLBinary(M, BuffersToWrap.front()))
+      return std::move(Err);
+    break;
   default:
     return createStringError(inconvertibleErrorCode(),
                              getOffloadKindName(Kind) +
