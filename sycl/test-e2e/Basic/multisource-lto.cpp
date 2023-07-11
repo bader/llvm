@@ -7,10 +7,10 @@
 //===----------------------------------------------------------------------===//
 
 // Multiple sources with kernel code
-// RUN: time %{build} --offload-new-driver -foffload-lto=thin -c -o %t.init.o -DINIT_KERNEL
-// RUN: time %{build} --offload-new-driver -foffload-lto=thin -c -o %t.calc.o -DCALC_KERNEL
-// RUN: time %{build} --offload-new-driver -foffload-lto=thin -c -o %t.main.o -DMAIN_APP
-// RUN: time %clangxx -fsycl -fsycl-targets=%{sycl_triple} --offload-new-driver -foffload-lto=thin %t.init.o %t.calc.o %t.main.o -o %t.fat
+// RUN: %{build} --offload-new-driver -foffload-lto=thin -c -o %t.init.o -DINIT_KERNEL
+// RUN: %{build} --offload-new-driver -foffload-lto=thin -c -o %t.calc.o -DCALC_KERNEL
+// RUN: %{build} --offload-new-driver -foffload-lto=thin -c -o %t.main.o -DMAIN_APP
+// RUN: %clangxx -fsycl -fsycl-targets=%{sycl_triple} --offload-new-driver -foffload-lto=thin %t.init.o %t.calc.o %t.main.o -o %t.fat
 // RUNx: %{run} %t.fat
 
 #include <sycl/sycl.hpp>
