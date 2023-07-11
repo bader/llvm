@@ -481,17 +481,13 @@ Expected<StringRef> clang(ArrayRef<StringRef> InputFiles, const ArgList &Args) {
 }
 } // namespace generic
 
-Expected<StringRef> linkDevice(ArrayRef<StringRef> InputFiles,
+Expected<ArrayRef<StringRef>> linkDevice(ArrayRef<StringRef> InputFiles,
                                const ArgList &Args) {
   const llvm::Triple Triple(Args.getLastArgValue(OPT_triple_EQ));
   switch (Triple.getArch()) {
   case Triple::nvptx:
   case Triple::nvptx64:
   case Triple::amdgcn:
-  case Triple::spirv32:
-  case Triple::spirv64:
-  case Triple::spir:
-  case Triple::spir64:
   case Triple::x86:
   case Triple::x86_64:
   case Triple::aarch64:
@@ -499,6 +495,11 @@ Expected<StringRef> linkDevice(ArrayRef<StringRef> InputFiles,
   case Triple::ppc64:
   case Triple::ppc64le:
     return generic::clang(InputFiles, Args);
+  case Triple::spirv32:
+  case Triple::spirv64:
+  case Triple::spir:
+  case Triple::spir64:
+    return InputFiles;
   default:
     return createStringError(inconvertibleErrorCode(),
                              Triple.getArchName() +
@@ -683,19 +684,52 @@ Error linkBitcodeFiles(SmallVectorImpl<OffloadFile> &InputFiles,
 
   // LTO Module hook to output bitcode without running the backend.
   SmallVector<StringRef, 4> BitcodeOutput;
-  auto OutputBitcode = [&](size_t, const Module &M) {
+  auto OutputBitcode = [&](size_t Task, const Module &M) {
     auto TempFileOrErr = createOutputFile(sys::path::filename(ExecutableName) +
-                                              "-jit-" + Triple.getTriple(),
+                                              std::to_string(Task) + "-jit-" +
+                                              Triple.getTriple(),
                                           "bc");
     if (!TempFileOrErr)
       reportError(TempFileOrErr.takeError());
 
-    std::error_code EC;
-    raw_fd_ostream LinkedBitcode(*TempFileOrErr, EC, sys::fs::OF_None);
-    if (EC)
-      reportError(errorCodeToError(EC));
-    WriteBitcodeToFile(M, LinkedBitcode);
-    BitcodeOutput.push_back(*TempFileOrErr);
+    {
+      std::error_code EC;
+      raw_fd_ostream LinkedBitcode(*TempFileOrErr, EC, sys::fs::OF_None);
+      if (EC)
+        reportError(errorCodeToError(EC));
+      WriteBitcodeToFile(M, LinkedBitcode);
+    }
+
+    if (Triple.isSPIR()) {
+      // Convert all Files to SPIR-V.
+
+      Expected<std::string> SPIRVTranslator =
+          findProgram("llvm-spirv", {getMainExecutable("llvm-spirv")});
+      if (!SPIRVTranslator)
+        reportError(SPIRVTranslator.takeError());
+
+      SmallVector<StringRef, 16> CmdArgs;
+      CmdArgs.push_back(*SPIRVTranslator);
+      CmdArgs.push_back(*TempFileOrErr);
+
+      // Create a new file to write the linked device image to.
+      auto TempOutFileOrErr = createOutputFile(
+          sys::path::filename(ExecutableName) + std::to_string(Task) + "-jit-" +
+              Triple.getTriple(),
+          "spv");
+      if (!TempOutFileOrErr)
+        reportError(TempOutFileOrErr.takeError());
+
+      CmdArgs.push_back("-o");
+      CmdArgs.push_back(*TempOutFileOrErr);
+
+      if (Error Err = executeCommands(*SPIRVTranslator, CmdArgs))
+        reportError(std::move(Err));
+
+      BitcodeOutput.push_back(*TempOutFileOrErr);
+    } else {
+      BitcodeOutput.push_back(*TempFileOrErr);
+    }
     return false;
   };
 
@@ -810,9 +844,71 @@ Error linkBitcodeFiles(SmallVectorImpl<OffloadFile> &InputFiles,
     return Error::success();
   }
 
-  // Append the new inputs to the device linker input.
-  for (StringRef File : Files)
-    OutputFiles.push_back(File);
+  // SmallVector<StringRef> SPIRVFiles(MaxTasks);
+  if (Triple.isSPIR()) {
+    // Convert all Files to SPIR-V.
+
+    // Expected<std::string> SPIRVTranslator =
+    //     findProgram("llvm-spirv", {getMainExecutable("llvm-spirv")});
+    // if (!SPIRVTranslator)
+    //   return SPIRVTranslator.takeError();
+
+// TODO: use parallelForEachError
+#if 0
+    auto Err = parallelForEachError(Files, [&](auto &Input) -> Error {
+      llvm::TimeTraceScope TimeScope("Translate to SPIR-V");
+
+      SmallVector<StringRef, 16> CmdArgs;
+      CmdArgs.push_back(*SPIRVTranslator);
+      CmdArgs.push_back(Input);
+
+      // Create a new file to write the linked device image to.
+      auto TempOutFileOrErr = createOutputFile(Input, "spv");
+      if (!TempOutFileOrErr)
+        return TempOutFileOrErr.takeError();
+
+      CmdArgs.push_back("-o");
+      CmdArgs.push_back(*TempOutFileOrErr);
+
+      if (Error Err = executeCommands(*SPIRVTranslator, CmdArgs))
+        return Err;
+
+      SPIRVFiles.emplace_back(*TempOutFileOrErr);
+
+      return Error::success();
+    });
+    if (Err)
+      return std::move(Err);
+//#else
+    for (auto &Input : BitcodeOutput) {
+      llvm::TimeTraceScope TimeScope("Translate to SPIR-V");
+
+      SmallVector<StringRef, 16> CmdArgs;
+      CmdArgs.push_back(*SPIRVTranslator);
+      CmdArgs.push_back(Input);
+
+      // Create a new file to write the linked device image to.
+      auto TempOutFileOrErr = createOutputFile(Input, "spv");
+      if (!TempOutFileOrErr)
+        return TempOutFileOrErr.takeError();
+
+      CmdArgs.push_back("-o");
+      CmdArgs.push_back(*TempOutFileOrErr);
+
+      if (Error Err = executeCommands(*SPIRVTranslator, CmdArgs))
+        return Err;
+
+      SPIRVFiles.emplace_back(*TempOutFileOrErr);
+    }
+#endif
+    for (StringRef File : BitcodeOutput)
+      OutputFiles.push_back(File);
+
+  } else {
+    // Append the new inputs to the device linker input.
+    for (StringRef File : Files)
+      OutputFiles.push_back(File);
+  }
 
   return Error::success();
 }
@@ -882,6 +978,70 @@ Expected<StringRef> compileModule(Module &M) {
   return *TempFileOrErr;
 }
 
+std::unique_ptr<Module> wrapSYCLBinaries(StringRef TT, LLVMContext &Context,
+                                         ArrayRef<ArrayRef<char>> Images) {
+  SmallVector<StringRef, 4> Inputs(Images.size());
+  for (size_t i = 0; i < Images.size(); ++i) {
+    int FD = -1;
+    auto TempInFileOrErr =
+        createOutputFile(sys::path::filename(ExecutableName) +
+                             ".wrapper.input." + std::to_string(i),
+                         "o");
+    if (!TempInFileOrErr)
+      return {};
+    if (std::error_code EC = sys::fs::openFileForWrite(*TempInFileOrErr, FD))
+      return {};
+
+    auto OS = std::make_unique<llvm::raw_fd_ostream>(FD, true);
+    OS->write(Images[i].data(), Images[i].size());
+    Inputs[i] = *TempInFileOrErr;
+  }
+
+  // Uses the clang-offload-wrapper to wrap SYCL device image.
+  Expected<std::string> OffloadWrapperPath = findProgram(
+      "clang-offload-wrapper", {getMainExecutable("clang-offload-wrapper")});
+  if (!OffloadWrapperPath)
+    return {};
+
+  // CHECK-HELP:       -host x86_64-pc-linux-gnu           \
+  // CHECK-HELP:       -kind=sycl                          \
+  // CHECK-HELP:         -target=spir64                    \
+  // CHECK-HELP:           -format=spirv                   \
+  // CHECK-HELP:           -compile-opts=-g                \
+  // CHECK-HELP:           -link-opts=-cl-denorms-are-zero \
+  // CHECK-HELP:           -entries=sym.txt                \
+  // CHECK-HELP:           -properties=props.txt           \
+  // CHECK-HELP:           a.spv                           \
+  // CHECK-HELP:           a_mf.txt                        \
+
+  SmallVector<StringRef, 16> CmdArgs;
+  CmdArgs.push_back(*OffloadWrapperPath);
+  CmdArgs.push_back("-host");
+  CmdArgs.push_back(TT);
+  CmdArgs.push_back("-kind=sycl");
+  CmdArgs.push_back("-target=spir64");
+
+  // Create a new file to write the linked device image to.
+  auto TempOutFileOrErr = createOutputFile(
+      sys::path::filename(ExecutableName) + ".wrapper.output", "o");
+  if (!TempOutFileOrErr)
+    return {};
+
+  CmdArgs.push_back("-o");
+  CmdArgs.push_back(*TempOutFileOrErr);
+
+  for (auto In : Inputs) {
+    CmdArgs.push_back("-format=spirv");
+    CmdArgs.push_back(In);
+  }
+
+  if (Error Err = executeCommands(*OffloadWrapperPath, CmdArgs))
+    return {};
+
+  SMDiagnostic err;
+  return parseIRFile(*TempOutFileOrErr, err, Context);
+}
+
 /// Creates the object file containing the device image and runtime
 /// registration code from the device images stored in \p Images.
 Expected<StringRef>
@@ -913,9 +1073,16 @@ wrapDeviceImages(ArrayRef<std::unique_ptr<MemoryBuffer>> Buffers,
       return std::move(Err);
     break;
   case OFK_SYCL:
-    if (Error Err = wrapSYCLBinary(M, BuffersToWrap.front()))
-      return std::move(Err);
+  {
+    std::unique_ptr<Module> Mod = wrapSYCLBinaries(
+        Args.getLastArgValue(OPT_host_triple_EQ, sys::getDefaultTargetTriple()),
+        Context, BuffersToWrap);
+    // auto FileOrErr = compileModule(*Mod);
+    // if (!FileOrErr)
+    //   return FileOrErr.takeError();
+    // return *FileOrErr;
     break;
+  }
   default:
     return createStringError(inconvertibleErrorCode(),
                              getOffloadKindName(Kind) +
@@ -1036,7 +1203,7 @@ bundleLinkedOutput(ArrayRef<OffloadingImage> Images, const ArgList &Args,
   case OFK_HIP:
     return bundleHIP(Images, Args);
   case OFK_SYCL:
-    return bundleSYCL(Images, Args);
+    return bundleOpenMP(Images);
   default:
     return createStringError(inconvertibleErrorCode(),
                              getOffloadKindName(Kind) +
@@ -1132,35 +1299,37 @@ linkAndWrapDeviceFiles(SmallVectorImpl<OffloadFile> &LinkerInputFiles,
     }
 
     // Link the remaining device files using the device linker.
-    auto OutputOrErr = !Args.hasArg(OPT_embed_bitcode)
+    auto OutputsOrErr = !Args.hasArg(OPT_embed_bitcode)
                            ? linkDevice(InputFiles, LinkerArgs)
-                           : InputFiles.front();
-    if (!OutputOrErr)
-      return OutputOrErr.takeError();
+                           : InputFiles;
+    if (!OutputsOrErr)
+      return OutputsOrErr.takeError();
 
     // Store the offloading image for each linked output file.
     for (OffloadKind Kind : ActiveOffloadKinds) {
-      llvm::ErrorOr<std::unique_ptr<llvm::MemoryBuffer>> FileOrErr =
-          llvm::MemoryBuffer::getFileOrSTDIN(*OutputOrErr);
-      if (std::error_code EC = FileOrErr.getError()) {
-        if (DryRun)
-          FileOrErr = MemoryBuffer::getMemBuffer("");
-        else
-          return createFileError(*OutputOrErr, EC);
+      for (auto Output : *OutputsOrErr) {
+        llvm::ErrorOr<std::unique_ptr<llvm::MemoryBuffer>> FileOrErr =
+            llvm::MemoryBuffer::getFileOrSTDIN(Output);
+        if (std::error_code EC = FileOrErr.getError()) {
+          if (DryRun)
+            FileOrErr = MemoryBuffer::getMemBuffer("");
+          else
+            return createFileError(Output, EC);
+        }
+
+        std::scoped_lock<decltype(ImageMtx)> Guard(ImageMtx);
+        OffloadingImage TheImage{};
+        TheImage.TheImageKind =
+            Args.hasArg(OPT_embed_bitcode) ? IMG_Bitcode : IMG_Object;
+        TheImage.TheOffloadKind = Kind;
+        TheImage.StringData["triple"] =
+            Args.MakeArgString(LinkerArgs.getLastArgValue(OPT_triple_EQ));
+        TheImage.StringData["arch"] =
+            Args.MakeArgString(LinkerArgs.getLastArgValue(OPT_arch_EQ));
+        TheImage.Image = std::move(*FileOrErr);
+
+        Images[Kind].emplace_back(std::move(TheImage));
       }
-
-      std::scoped_lock<decltype(ImageMtx)> Guard(ImageMtx);
-      OffloadingImage TheImage{};
-      TheImage.TheImageKind =
-          Args.hasArg(OPT_embed_bitcode) ? IMG_Bitcode : IMG_Object;
-      TheImage.TheOffloadKind = Kind;
-      TheImage.StringData["triple"] =
-          Args.MakeArgString(LinkerArgs.getLastArgValue(OPT_triple_EQ));
-      TheImage.StringData["arch"] =
-          Args.MakeArgString(LinkerArgs.getLastArgValue(OPT_arch_EQ));
-      TheImage.Image = std::move(*FileOrErr);
-
-      Images[Kind].emplace_back(std::move(TheImage));
     }
     return Error::success();
   });
