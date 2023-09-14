@@ -8,18 +8,15 @@
 
 #pragma once
 
+#include <CL/__spirv/spirv_common.hpp>        // for __SYCL_CONVERGENT__
 #include <CL/__spirv/spirv_types.hpp>         // for Scope, __ocl_event_t
 #include <sycl/detail/defines_elementary.hpp> // for __DPCPP_SYCL_EXTERNAL
 #include <sycl/detail/export.hpp>             // for __SYCL_EXPORT
 
 #include <stddef.h> // for size_t
 #include <stdint.h> // for uint32_t
-
-// Convergent attribute
 #ifdef __SYCL_DEVICE_ONLY__
-#define __SYCL_CONVERGENT__ __attribute__((convergent))
-#else
-#define __SYCL_CONVERGENT__
+#include <type_traits>
 #endif
 
 #ifdef __SYCL_DEVICE_ONLY__
@@ -1211,19 +1208,6 @@ __CLC_BF16_SCAL_VEC(uint32_t)
 
 #undef __CLC_BF16_SCAL_VEC
 #undef __CLC_BF16
-
-__SYCL_CONVERGENT__ extern __DPCPP_SYCL_EXTERNAL
-    __SYCL_EXPORT __spv::complex_half
-    __spirv_GroupCMulINTEL(unsigned int, unsigned int,
-                           __spv::complex_half) noexcept;
-__SYCL_CONVERGENT__ extern __DPCPP_SYCL_EXTERNAL
-    __SYCL_EXPORT __spv::complex_float
-    __spirv_GroupCMulINTEL(unsigned int, unsigned int,
-                           __spv::complex_float) noexcept;
-__SYCL_CONVERGENT__ extern __DPCPP_SYCL_EXTERNAL
-    __SYCL_EXPORT __spv::complex_double
-    __spirv_GroupCMulINTEL(unsigned int, unsigned int,
-                           __spv::complex_double) noexcept;
 
 extern __DPCPP_SYCL_EXTERNAL int32_t __spirv_BuiltInGlobalHWThreadIDINTEL();
 extern __DPCPP_SYCL_EXTERNAL int32_t __spirv_BuiltInSubDeviceIDINTEL();
