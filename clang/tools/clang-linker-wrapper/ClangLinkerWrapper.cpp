@@ -1212,6 +1212,18 @@ static Error compressImages(SmallVectorImpl<offloading::SYCLImage> &Images,
   return Error::success();
 }
 
+static Error dumpDeviceImage(StringRef File) {
+  if (OffloadImageDumpDir.empty() || DryRun)
+    return Error::success();
+  SmallString<128> CopyTo(OffloadImageDumpDir);
+  sys::path::append(CopyTo, sys::path::filename(File));
+  if (std::error_code EC = sys::fs::copy_file(File, CopyTo))
+    return createStringError(EC, formatv("failed to copy file. From: "
+                                         "{0} to: {1}, error_code: {2}",
+                                         File, CopyTo, EC.value()));
+  return Error::success();
+}
+
 /// Reads the post-link device images in \p SplitModules and prepares them for
 /// SYCL runtime registration: dumps them if requested, assigns the runtime
 /// target and compresses them if requested.
@@ -1230,17 +1242,8 @@ createSYCLImages(ArrayRef<module_split::SplitModule> SplitModules,
     RegularTarget = "spir64";
 
   for (const module_split::SplitModule &SI : SplitModules) {
-    if (!OffloadImageDumpDir.empty() && !DryRun) {
-      StringRef CopyFrom = SI.ModuleFilePath;
-      SmallString<128> CopyTo = OffloadImageDumpDir;
-      StringRef Filename = sys::path::filename(CopyFrom);
-      CopyTo.append(Filename);
-      std::error_code EC = sys::fs::copy_file(CopyFrom, CopyTo);
-      if (EC)
-        return createStringError(EC, formatv("failed to copy file. From: "
-                                             "{0} to: {1}, error_code: {2}",
-                                             CopyFrom, CopyTo, EC.value()));
-    }
+    if (Error E = dumpDeviceImage(SI.ModuleFilePath))
+      return std::move(E);
 
     auto MBOrDesc = MemoryBuffer::getFile(SI.ModuleFilePath);
     if (std::error_code EC = MBOrDesc.getError()) {
